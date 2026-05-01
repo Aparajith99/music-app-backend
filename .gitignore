@@ -1,0 +1,6 @@
+*.pem
+__pycache__/
+*.pyc
+.env
+2026a2_songs.json
+*.zip
