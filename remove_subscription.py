@@ -4,9 +4,11 @@ import json
 dynamodb = boto3.resource("dynamodb", region_name="us-east-1")
 subscriptions_table = dynamodb.Table("subscriptions")
 
+import urllib.parse
+
 def lambda_handler(event, context):
-    email = event["pathParameters"]["email"]
-    title_year = event["pathParameters"]["title_year"]
+    email = urllib.parse.unquote(event["pathParameters"]["email"])
+    title_year = urllib.parse.unquote(event["pathParameters"]["title_year"])
     
     subscriptions_table.delete_item(
         Key={

@@ -4,3 +4,6 @@ __pycache__/
 .env
 2026a2_songs.json
 *.zip
+
+node_modules/
+frontend/dist/*

@@ -6,11 +6,14 @@ subscriptions_table = dynamodb.Table("subscriptions")
 s3 = boto3.client("s3", region_name="us-east-1")
 BUCKET = "music-app-images-816553836520"
 
+from boto3.dynamodb.conditions import Key
+import urllib.parse
+
 def lambda_handler(event, context):
     email = event["pathParameters"]["email"]
+    email = urllib.parse.unquote(email)
     response = subscriptions_table.query(
-        KeyConditionExpression="email = :email",
-        ExpressionAttributeValues={":email": email}
+        KeyConditionExpression=Key("email").eq(email)
     )
     items = response.get("Items", [])
     for item in items:
