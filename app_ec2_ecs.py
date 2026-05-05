@@ -1,7 +1,9 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 import boto3
 
 app = Flask(__name__)
+CORS(app)  # Enable CORS for all routes (mirrors Lambda Access-Control-Allow-Origin: *)
 
 dynamodb = boto3.resource("dynamodb", region_name="us-east-1")
 login_table = dynamodb.Table("login")
@@ -86,11 +88,14 @@ def query():
         )
     return jsonify({"success": True, "items": items}), 200
 
+from boto3.dynamodb.conditions import Key
+import urllib.parse
+
 @app.route("/subscriptions/<email>", methods=["GET"])
 def get_subscriptions(email):
+    email = urllib.parse.unquote(email)
     response = subscriptions_table.query(
-        KeyConditionExpression="email = :email",
-        ExpressionAttributeValues={":email": email}
+        KeyConditionExpression=Key("email").eq(email)
     )
     items = response.get("Items", [])
     for item in items:
@@ -125,6 +130,8 @@ def add_subscription():
 
 @app.route("/subscriptions/<email>/<path:title_year>", methods=["DELETE"])
 def remove_subscription(email, title_year):
+    email = urllib.parse.unquote(email)
+    title_year = urllib.parse.unquote(title_year)
     subscriptions_table.delete_item(
         Key={
             "email": email,
