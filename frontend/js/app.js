@@ -4,11 +4,21 @@
  */
 
 // ============ Configuration ============
-// In local dev (Vite on port 3000), requests go through the proxy → Flask on :5000.
-// In production (static hosting / S3), requests go directly to API Gateway.
-const API_BASE = window.location.hostname === "localhost"
-  ? "/api"
-  : "https://imum9rqox0.execute-api.us-east-1.amazonaws.com/prod";
+// Backend options — update the URLs below with your actual deployment endpoints.
+const BACKENDS = {
+  EC2:    "http://3.90.223.97",
+  ECS:   "http://music-app-alb-182039008.us-east-1.elb.amazonaws.com",
+  Lambda: "https://imum9rqox0.execute-api.us-east-1.amazonaws.com/prod",
+};
+
+// Resolve API_BASE: saved choice → localStorage, fallback → first entry.
+function getApiBase() {
+  const saved = localStorage.getItem("backend");
+  if (saved && BACKENDS[saved]) return BACKENDS[saved];
+  return Object.values(BACKENDS)[0];
+}
+
+let API_BASE = getApiBase();
 
 // ============ Session Management ============
 const Session = {
@@ -36,11 +46,54 @@ const subscribedKeys = new Set();
 
 // ============ Initialisation ============
 document.addEventListener("DOMContentLoaded", () => {
+  initBackendSwitcher();           // mount dropdown on every page
   const page = document.body.dataset.page;
   if (page === "login") initLoginPage();
   else if (page === "register") initRegisterPage();
   else if (page === "main") initMainPage();
 });
+
+// ============ Backend Switcher ============
+function initBackendSwitcher() {
+  // Build the floating widget
+  const wrapper = document.createElement("div");
+  wrapper.id = "backend-switcher";
+  wrapper.innerHTML = `
+    <label for="backend-select">⚡ Backend</label>
+    <select id="backend-select">
+      ${Object.keys(BACKENDS)
+        .map(
+          (key) =>
+            `<option value="${key}"${key === (localStorage.getItem("backend") || Object.keys(BACKENDS)[0]) ? " selected" : ""}>${key}</option>`
+        )
+        .join("")}
+    </select>
+    <span id="backend-indicator" class="indicator"></span>
+  `;
+  document.body.appendChild(wrapper);
+
+  const select = document.getElementById("backend-select");
+  const indicator = document.getElementById("backend-indicator");
+
+  // Set initial indicator colour
+  updateIndicator(indicator, select.value);
+
+  select.addEventListener("change", () => {
+    localStorage.setItem("backend", select.value);
+    API_BASE = BACKENDS[select.value];
+    updateIndicator(indicator, select.value);
+    // Reload data on the main page so the new backend takes effect immediately
+    if (document.body.dataset.page === "main" && Session.isLoggedIn()) {
+      loadSubscriptions();
+    }
+  });
+}
+
+function updateIndicator(el, key) {
+  const colours = { EC2: "#f59e0b", ECS: "#3b82f6", Lambda: "#10b981" };
+  el.style.background = colours[key] || "#888";
+  el.title = `Connected to ${key}`;
+}
 
 // ============ Login Page ============
 function initLoginPage() {
