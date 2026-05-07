@@ -565,6 +565,78 @@ img { max-width: 100%; display: block; }
   50% { transform: scaleY(1); }
 }
 
+/* ============ Backend Switcher (floating) ============ */
+#backend-switcher {
+  position: fixed;
+  bottom: 1.25rem;
+  right: 1.25rem;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: rgba(18, 18, 42, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  padding: 0.5rem 1rem;
+  box-shadow: var(--shadow-md);
+  animation: fadeSlideUp 0.4s ease-out;
+  transition: box-shadow var(--transition), transform var(--transition);
+}
+
+#backend-switcher:hover {
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-2px);
+}
+
+#backend-switcher label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  cursor: default;
+  user-select: none;
+}
+
+#backend-select {
+  appearance: none;
+  -webkit-appearance: none;
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: var(--font);
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 0.35rem 2rem 0.35rem 0.65rem;
+  outline: none;
+  cursor: pointer;
+  transition: border-color var(--transition), box-shadow var(--transition);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='rgba(255,255,255,0.5)' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.6rem center;
+}
+
+#backend-select:focus {
+  border-color: var(--accent-start);
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+}
+
+#backend-select option {
+  background: #1a1a3e;
+  color: var(--text-primary);
+}
+
+#backend-switcher .indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 6px currentColor;
+  transition: background 0.3s ease, box-shadow 0.3s ease;
+}
+
 /* ============ Responsive ============ */
 @media (max-width: 768px) {
   .app-header { padding: 0.75rem 1rem; flex-wrap: wrap; gap: 0.5rem; }

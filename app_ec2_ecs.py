@@ -3,7 +3,10 @@ from flask_cors import CORS
 import boto3
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS for all routes (mirrors Lambda Access-Control-Allow-Origin: *)
+CORS(app, resources={r"/*": {"origins": "*"}},
+     supports_credentials=False,
+     allow_headers=["Content-Type", "Authorization"],
+     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
 
 dynamodb = boto3.resource("dynamodb", region_name="us-east-1")
 login_table = dynamodb.Table("login")
@@ -12,6 +15,10 @@ subscriptions_table = dynamodb.Table("subscriptions")
 
 s3 = boto3.client("s3", region_name="us-east-1")
 BUCKET = "music-app-images-816553836520"
+
+@app.route("/", methods=["GET"])
+def health():
+    return jsonify({"status": "ok"}), 200
 
 @app.route("/login", methods=["POST"])
 def login():
@@ -66,7 +73,7 @@ def query():
         expression_names["#y"] = "year"
     if album:
         filter_expression.append("contains(#al, :album)")
-        expression_values[":al"] = album
+        expression_values[":album"] = album
         expression_names["#al"] = "album"
     if not filter_expression:
         return jsonify({"success": False, "message": "No result is retrieved. Please query again"}), 400
@@ -141,4 +148,4 @@ def remove_subscription(email, title_year):
     return jsonify({"success": True}), 200
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=False)
+    app.run(host="0.0.0.0", port=80, debug=False)

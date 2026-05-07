@@ -29,7 +29,7 @@ def lambda_handler(event, context):
         expression_names["#y"] = "year"
     if album:
         filter_expression.append("contains(#al, :album)")
-        expression_values[":al"] = album
+        expression_values[":album"] = album
         expression_names["#al"] = "album"
     if not filter_expression:
         return {
