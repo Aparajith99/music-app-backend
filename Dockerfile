@@ -9,4 +9,4 @@ COPY app_ec2_ecs.py .
 
 EXPOSE 80
 
-CMD ["python3", "app_ec2_ecs.py"]
+CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:80", "app:app"]

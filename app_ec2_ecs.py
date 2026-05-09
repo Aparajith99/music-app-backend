@@ -3,10 +3,8 @@ from flask_cors import CORS
 import boto3
 
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "*"}},
-     supports_credentials=False,
-     allow_headers=["Content-Type", "Authorization"],
-     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
+FRONTEND_URL = "http://music-app-816553836520-us-east-1-an.s3-website-us-east-1.amazonaws.com"
+CORS(app, resources={r"/*": {"origins": [FRONTEND_URL]}})
 
 dynamodb = boto3.resource("dynamodb", region_name="us-east-1")
 login_table = dynamodb.Table("login")
@@ -15,6 +13,15 @@ subscriptions_table = dynamodb.Table("subscriptions")
 
 s3 = boto3.client("s3", region_name="us-east-1")
 BUCKET = "music-app-images-816553836520"
+
+@app.before_request
+def restrict_origin():
+    # Allow health check without origin
+    if request.path == "/":
+        return
+    origin = request.headers.get("Origin") or request.headers.get("Referer", "")
+    if not origin.startswith(FRONTEND_URL):
+        return jsonify({"error": "Forbidden"}), 403
 
 @app.route("/", methods=["GET"])
 def health():
@@ -56,33 +63,114 @@ def query():
     artist = request.args.get("artist")
     year = request.args.get("year")
     album = request.args.get("album")
-    filter_expression = []
+
+    if not any([title, artist, year, album]):
+        return jsonify({"success": False, "message": "No result is retrieved. Please query again"}), 400
+
+    # Decide between Query and Scan based on key fields.
+    # Table PK: artist  |  SK: title_year
+    # GSI  "year-artist-index":  PK: year   SK: artist
+    # LSI  "artist-album-index": PK: artist SK: album
+
+    key_condition_parts = []
+    filter_parts = []
     expression_values = {}
     expression_names = {}
-    if title:
-        filter_expression.append("contains(#t, :title)")
-        expression_values[":title"] = title
-        expression_names["#t"] = "title"
-    if artist:
-        filter_expression.append("contains(#a, :artist)")
+    use_query = False
+    index_name = None
+
+    if artist and album:
+        # LSI query: artist (PK) + album (SK)
+        use_query = True
+        index_name = "artist-album-index"
+
+        key_condition_parts.append("#a = :artist")
         expression_values[":artist"] = artist
         expression_names["#a"] = "artist"
-    if year:
-        filter_expression.append("#y = :year")
-        expression_values[":year"] = year
-        expression_names["#y"] = "year"
-    if album:
-        filter_expression.append("contains(#al, :album)")
+
+        key_condition_parts.append("begins_with(#al, :album)")
         expression_values[":album"] = album
         expression_names["#al"] = "album"
-    if not filter_expression:
-        return jsonify({"success": False, "message": "No result is retrieved. Please query again"}), 400
-    filter_str = " AND ".join(filter_expression)
-    response = music_table.scan(
-        FilterExpression=filter_str,
-        ExpressionAttributeValues=expression_values,
-        ExpressionAttributeNames=expression_names
-    )
+
+        # remaining fields
+        if title:
+            filter_parts.append("contains(#t, :title)")
+            expression_values[":title"] = title
+            expression_names["#t"] = "title"
+        if year:
+            filter_parts.append("#y = :year")
+            expression_values[":year"] = year
+            expression_names["#y"] = "year"
+
+    elif artist:
+        # Table query on PK (artist)
+        use_query = True
+
+        key_condition_parts.append("#a = :artist")
+        expression_values[":artist"] = artist
+        expression_names["#a"] = "artist"
+
+        # remaining fields
+        if title:
+            filter_parts.append("contains(#t, :title)")
+            expression_values[":title"] = title
+            expression_names["#t"] = "title"
+        if year:
+            filter_parts.append("#y = :year")
+            expression_values[":year"] = year
+            expression_names["#y"] = "year"
+
+    elif year:
+        # GSI query on year-artist-index
+        use_query = True
+        index_name = "year-artist-index"
+
+        key_condition_parts.append("#y = :year")
+        expression_values[":year"] = year
+        expression_names["#y"] = "year"
+
+        # remaining fields
+        if title:
+            filter_parts.append("contains(#t, :title)")
+            expression_values[":title"] = title
+            expression_names["#t"] = "title"
+        if album:
+            filter_parts.append("contains(#al, :album)")
+            expression_values[":album"] = album
+            expression_names["#al"] = "album"
+
+    # Query or fall back to Scan
+    if use_query:
+        target = index_name if index_name else "table (PK: artist)"
+        query_kwargs = {
+            "KeyConditionExpression": " AND ".join(key_condition_parts),
+            "ExpressionAttributeValues": expression_values,
+            "ExpressionAttributeNames": expression_names,
+        }
+        if index_name:
+            query_kwargs["IndexName"] = index_name
+        if filter_parts:
+            query_kwargs["FilterExpression"] = " AND ".join(filter_parts)
+
+        response = music_table.query(**query_kwargs)
+    else:
+        # Only when no key field (artist / year) is given
+        for field, placeholder, alias, attr, use_contains in [
+            (title, ":title", "#t", "title", True),
+            (album, ":album", "#al", "album", True),
+        ]:
+            if field:
+                expr = f"contains({alias}, {placeholder})" if use_contains else f"{alias} = {placeholder}"
+                filter_parts.append(expr)
+                expression_values[placeholder] = field
+                expression_names[alias] = attr
+
+        response = music_table.scan(
+            FilterExpression=" AND ".join(filter_parts),
+            ExpressionAttributeValues=expression_values,
+            ExpressionAttributeNames=expression_names,
+        )
+
     items = response.get("Items", [])
     if not items:
         return jsonify({"success": False, "message": "No result is retrieved. Please query again"}), 404
@@ -148,4 +236,4 @@ def remove_subscription(email, title_year):
     return jsonify({"success": True}), 200
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=80, debug=False)
+    app.run(debug=False)

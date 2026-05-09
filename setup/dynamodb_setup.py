@@ -30,6 +30,8 @@ def load_login_data(table):
         {"email": "s40843271@student.rmit.edu.au", "user_name": "KaveeshwarKandhasamySubbramani1", "password": "789012"},
         {"email": "s40843272@student.rmit.edu.au", "user_name": "KaveeshwarKandhasamySubbramani2", "password": "890123"},
         {"email": "s40843273@student.rmit.edu.au", "user_name": "KaveeshwarKandhasamySubbramani3", "password": "901234"},
+        {"email": "s4105620@student.rmit.edu.au", "user_name": "Hardik Bhavesh Ramparia", "password": "0123456"},
+        {"email": "s41056201@student.rmit.edu.au", "user_name": "Hardik Bhavesh Ramparia 2", "password": "1234567"},
     ]
     print(f"Loading {len(users)} users...")
     with table.batch_writer() as batch:

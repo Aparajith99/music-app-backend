@@ -6,7 +6,7 @@
 // ============ Configuration ============
 // Backend options — update the URLs below with your actual deployment endpoints.
 const BACKENDS = {
-  EC2:    "http://3.90.223.97",
+  EC2:    "http://54.88.173.155",
   ECS:   "http://music-app-alb-182039008.us-east-1.elb.amazonaws.com",
   Lambda: "https://imum9rqox0.execute-api.us-east-1.amazonaws.com/prod",
 };
